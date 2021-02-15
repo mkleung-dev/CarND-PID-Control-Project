@@ -30,7 +30,7 @@ string hasData(string s) {
   return "";
 }
 
-int main() {
+int main(int argc, char *argv[]) {
   uWS::Hub h;
 
   PID steer_pid;
@@ -39,6 +39,11 @@ int main() {
   double steer_Kp = 0.06;
   double steer_Ki = 0.00001;
   double steer_Kd = 0.01;
+  if (argc >= 3) {
+    steer_Kp = atof(argv[1]);
+    steer_Ki = atof(argv[2]);
+    steer_Kd = atof(argv[3]);
+  }
   /**
    * Initialize the pid variable.
    */
