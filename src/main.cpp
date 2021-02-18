@@ -4,6 +4,9 @@
 #include <string>
 #include "json.hpp"
 #include "PID.h"
+#include "PIDWithTwiddle.h"
+
+#include "RunningRMSE.h"
 
 // for convenience
 using nlohmann::json;
@@ -33,12 +36,15 @@ string hasData(string s) {
 int main(int argc, char *argv[]) {
   uWS::Hub h;
 
-  PID steer_pid;
+  PIDWithTwiddle steer_pid;
   PID velocity_pid;
 
-  double steer_Kp = 0.06;
+  int timeToOptimize = 0;
+  double steer_Kp = 0.4;
   double steer_Ki = 0.00001;
-  double steer_Kd = 0.01;
+  double steer_Kd = 6.0;
+  double target_speed = 20;
+  RunningRMSE rmse;
   if (argc >= 3) {
     steer_Kp = atof(argv[1]);
     steer_Ki = atof(argv[2]);
@@ -50,8 +56,9 @@ int main(int argc, char *argv[]) {
   // double Kp_, double Ki_, double Kd_
   steer_pid.Init(steer_Kp, steer_Ki, steer_Kd);
   velocity_pid.Init(0.1, 0.002, 0.0);
+  rmse.Reset();
 
-  h.onMessage([&steer_pid, &velocity_pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  h.onMessage([&target_speed, &rmse, &timeToOptimize, &steer_pid, &velocity_pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -71,12 +78,16 @@ int main(int argc, char *argv[]) {
           double angle = std::stod(j[1]["steering_angle"].get<string>());
           double steer_value = 0;
           double throttle = 0;
-          double target_speed = 20;
           /**
            * TODO: Calculate steering value here, remember the steering value is
            *   [-1, 1].
            */
+          if (0 >= timeToOptimize && steer_pid.IsOptimizationFinished()) {
+            steer_pid.startOptimization(10, 0.001, {0.01, 0.000001, 0.1});
+            timeToOptimize = 10;
+          }
           steer_pid.UpdateError(cte);
+          rmse.AddError(cte);
           steer_value = -steer_pid.TotalError();
           if (steer_value < -1) {
             steer_value = -1;
@@ -94,11 +105,27 @@ int main(int argc, char *argv[]) {
             throttle = 1;
           }
 
+          if (steer_pid.IsOptimizationFinished()) {
+            timeToOptimize--;
+          }
+          if (rmse.GetCount() > 3000) {
+            if (rmse.getRMSE() < 0.01) {
+              target_speed += 10;
+            }
+            rmse.Reset();
+          }
+
           std::cout << "cte," << cte << std::endl;
           std::cout << "speed," << speed << std::endl;
+          std::cout << "rmse.getRMSE()," << rmse.getRMSE() << std::endl;
+          std::cout << "rmse.GetCount()," << rmse.GetCount() << std::endl;
+          std::cout << "target_speed," << target_speed << std::endl;
           std::cout << "angle," << angle << std::endl;
           std::cout << "steer_value," << steer_value << std::endl;
           // DEBUG
+          std::cout << "Kp: " << steer_pid.get_Kp() << " Ki: " << steer_pid.get_Ki() << " Kd: " << steer_pid.get_Kd() << std::endl;
+
+
           std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
 
           json msgJson;

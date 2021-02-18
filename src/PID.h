@@ -1,6 +1,9 @@
 #ifndef PID_H
 #define PID_H
 
+/**
+ * The PID class.
+ */
 class PID {
  public:
   /**
@@ -23,15 +26,19 @@ class PID {
    * Update the PID error variables given cross track error.
    * @param cte The current cross track error
    */
-  void UpdateError(double cte);
+  virtual void UpdateError(double cte);
 
   /**
    * Calculate the total PID error.
    * @output The total PID error
    */
-  double TotalError();
+  virtual double TotalError();
 
- private:
+  double get_Kp();
+  double get_Ki();
+  double get_Kd();
+
+ protected:
   /**
    * PID Errors
    */

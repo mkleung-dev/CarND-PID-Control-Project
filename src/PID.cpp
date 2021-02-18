@@ -39,3 +39,13 @@ double PID::TotalError() {
    */
   return Kp * p_error + Ki * i_error + Kd * d_error;  // TODO: Add your total error calc here!
 }
+
+double PID::get_Kp() {
+  return Kp;
+}
+double PID::get_Ki() {
+  return Ki;
+}
+double PID::get_Kd() {
+  return Kd;
+}
