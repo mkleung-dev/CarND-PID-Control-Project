@@ -1,25 +1,27 @@
 #ifndef RUNNING_RMSE_H
 #define RUNNING_RMSE_H
 
+#include <deque>
+
 class RunningRMSE {
  public:
   /**
    * Constructor
    */
-  RunningRMSE();
+  RunningRMSE(int max_count = 100);
   /**
    * Destructor.
    */
   virtual ~RunningRMSE();
 
   void AddError(double err);
-  int GetCount();
   double getRMSE();
-  void Reset();
+  void Reset(int max_count);
+  int GetCount();
 
  protected:
-  double acc_square_err;
-  int count;
+  std::deque<double> sqr_err;
+  int max_count;
 };
 
 #endif  // RUNNING_RMSE_H

@@ -8,6 +8,7 @@
 
 enum class TwiddleState
 {
+  kState0,
   kState1,
   kState2,
   kState3,
@@ -31,7 +32,7 @@ class PIDWithTwiddle: public PID {
    */
   virtual ~PIDWithTwiddle();
 
-  bool startOptimization(int rmse_count, double tolerance, std::vector<double> dp);
+  bool startOptimization(int rmse_count, double toleranceRatio, std::vector<double> dp);
   bool IsOptimizationFinished();
 
   /**
@@ -45,12 +46,20 @@ class PIDWithTwiddle: public PID {
    * @output The total PID error
    */
   virtual double TotalError();
+
+
+  TwiddleState getState();
+  int getOptimizationIndex();
+  int getRMSECount();
+  double getDp(int index);
+  double getDpFinished(int index);
+  
  protected:
   /**
    * Twiddle
    */
   std::vector<double> dp;
-  double tolerance;
+  std::vector<double> dpFinished;
   int rmse_count;
   RunningRMSE running_RMSE;
   double min_error;
