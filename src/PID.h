@@ -34,8 +34,22 @@ class PID {
    */
   virtual double TotalError();
 
+  /**
+   * Get the Kp.
+   * @output Kp
+   */
   double get_Kp();
+
+  /**
+   * Get the Ki.
+   * @output Ki
+   */
   double get_Ki();
+
+  /**
+   * Get the Kd.
+   * @output Kd
+   */
   double get_Kd();
 
  protected:

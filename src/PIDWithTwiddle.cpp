@@ -5,83 +5,133 @@
 
 
 PIDWithTwiddle::PIDWithTwiddle() : PID() {
+  /**
+   * Constructor
+   */
   min_error = 99999999;
   optimization_index = 0;
-  optimization_state = TwiddleState::kState1;
+  optimization_state = TwiddleState::kStateComputeErrorAtInitial;
   dpFinished = {100, 100, 100};
   dp = {0, 0, 0};
 }
 
 PIDWithTwiddle::~PIDWithTwiddle() {
-  
+  /**
+   * Destructor.
+   */
 }
 
 void PIDWithTwiddle::UpdateError(double cte) {
   /**
-   * Update PID errors based on cte.
+   * Update the PID error variables given cross track error.
+   * It is the implementation of the Twiddle algorithm.
+   * @param cte The current cross track error
    */
   if (!IsOptimizationFinished()) {
     std::vector<double> p = {Kp, Ki, Kd};
-    // std::cout << "dp0," << dp[0] << ",dp1," << dp[1] << ",dp2," << dp[2] << std::endl;
 
-    if (TwiddleState::kState0 == optimization_state) {
+    if (TwiddleState::kStateInitial == optimization_state) {
+      // Reset the running error and the first one.
       running_RMSE.Reset(rmse_count + 1);
+      running_RMSE.Add(cte);
 
-      optimization_state = TwiddleState::kState1;
-    } else if (TwiddleState::kState1 == optimization_state) {
-      running_RMSE.AddError(cte);
+      // Compute next state
+      optimization_state = TwiddleState::kStateComputeErrorAtInitial;
+    } else if (TwiddleState::kStateComputeErrorAtInitial == optimization_state) {
+      // Add the running error.
+      running_RMSE.Add(cte);
 
+      // Check if there are enough number of samples.
       if (running_RMSE.GetCount() > rmse_count) {
-        min_error = running_RMSE.getRMSE();
+        // Initial RMS error.
+        min_error = running_RMSE.getRMS();
+
+        // Print Information
+        std::cout << "Kp," << get_Kp();
+        std::cout << ",Ki," << get_Ki();
+        std::cout << ",Kd," << get_Kd();
+        std::cout << ",error," << min_error;
+        std::cout << ",min_error," << min_error;
+        std::cout << std::endl;
+
         running_RMSE.Reset(rmse_count + 1);
         p[optimization_index] += dp[optimization_index];
 
-        optimization_state = TwiddleState::kState2;
+        // Compute next state
+        optimization_state = TwiddleState::kStateComputeErrorWhenIncrease;
       }
-    } else if (TwiddleState::kState2 == optimization_state) {
-      running_RMSE.AddError(cte);
+    } else if (TwiddleState::kStateComputeErrorWhenIncrease == optimization_state) {
+      // Add the running error.
+      running_RMSE.Add(cte);
 
+      // Check if there are enough number of samples.
       if (running_RMSE.GetCount() > rmse_count) {
-        double err = running_RMSE.getRMSE();
-        //double max_error = running_RMSE.getMaxErr();
+        // RMS error when increasing.
+        double err = running_RMSE.getRMS();
         running_RMSE.Reset(rmse_count + 1);
 
-        if (err < min_error/* && max_error < 10.0*/) {
-          //Update Current
+        // Print Information
+        std::cout << "Kp," << get_Kp();
+        std::cout << ",Ki," << get_Ki();
+        std::cout << ",Kd," << get_Kd();
+        std::cout << ",err," << err;
+        std::cout << ",min_error," << min_error;
+        std::cout << std::endl;
+
+        if (err < min_error) {
+          // Use the increased parameter.
           min_error = err;
+
+          // Update the step parameter trial.
           dp[optimization_index] *= 1.1;
-          //Prepare for the Next
+          
+          // Compute next state
           optimization_index = (optimization_index + 1) % 3;
           p[optimization_index] += dp[optimization_index];
-          optimization_state = TwiddleState::kState2;
+          optimization_state = TwiddleState::kStateComputeErrorWhenIncrease;
         } else {
-          //Update Current
+          // Try decreasing
           p[optimization_index] -= 2 * dp[optimization_index];
-          //Prepare for the Next
-          optimization_state = TwiddleState::kState3;
+          
+          // Compute next state
+          optimization_state = TwiddleState::kStateComputeErrorWhenDecrease;
         }
       }
-    } else if (TwiddleState::kState3 == optimization_state) {
-      running_RMSE.AddError(cte);
+    } else if (TwiddleState::kStateComputeErrorWhenDecrease == optimization_state) {
+      // Add the running error.
+      running_RMSE.Add(cte);
 
+      // Check if there are enough number of samples.
       if (running_RMSE.GetCount() > rmse_count) {
-        double err = running_RMSE.getRMSE();
-        //double max_error = running_RMSE.getMaxErr();
+        double err = running_RMSE.getRMS();
         running_RMSE.Reset(rmse_count + 1);
 
-        if (err < min_error/* && max_error < 10.0*/) {
-          //Update Current
+        // Print Information
+        std::cout << "Kp," << get_Kp();
+        std::cout << ",Ki," << get_Ki();
+        std::cout << ",Kd," << get_Kd();
+        std::cout << ",err," << err;
+        std::cout << ",min_error," << min_error;
+        std::cout << std::endl;
+
+        if (err < min_error) {
+          // Use the decreased parameter.
           min_error = err;
+
+          // Update the step parameter trial.
           dp[optimization_index] *= 1.1;
         } else {
-          //Update Current
+          // Restore the parameter
           p[optimization_index] += dp[optimization_index];
+
+          // Update the step parameter trial.
           dp[optimization_index] *= 0.9;
         }
-        //Prepare for the Next
+
+        // Compute next state
         optimization_index = (optimization_index + 1) % 3;
         p[optimization_index] += dp[optimization_index];
-        optimization_state = TwiddleState::kState2;
+        optimization_state = TwiddleState::kStateComputeErrorWhenIncrease;
       }
     }
     Kp = p[0];
@@ -93,50 +143,33 @@ void PIDWithTwiddle::UpdateError(double cte) {
   }
 }
 
-double PIDWithTwiddle::TotalError() {
-  /**
-   * Calculate and return the total error
-   */
-  return Kp * p_error + Ki * i_error + Kd * d_error;
-}
-
 bool PIDWithTwiddle::startOptimization(int rmse_count, double toleranceRatio, std::vector<double> dp) {
+  /**
+   * Start the optimization using Twiddle algorithm.
+   * @param rmse_count The number of samples used in computing root mean square eror
+   * @param toleranceRatio The finishing tolerance ratio related to the initial step parameters
+   * @param dp The twiddle step parameters
+   * @output if the start of the optimization is successful
+   */
   if (!IsOptimizationFinished()) {
     return false;
   }
 
-  // std::cout << "dp0," << dp[0] << ",dp1," << dp[1] << ",dp2," << dp[2] << std::endl;
   this->rmse_count = rmse_count;
   this->dp = dp;
   this->dpFinished = {dp[0] * toleranceRatio, dp[1] * toleranceRatio, dp[2] * toleranceRatio};
   optimization_index = 0;
-  optimization_state = TwiddleState::kState1;
+  optimization_state = TwiddleState::kStateComputeErrorAtInitial;
   running_RMSE.Reset(rmse_count + 1);
 
   return true;
 }
 
 bool PIDWithTwiddle::IsOptimizationFinished() {
+  /**
+   * Check if the the optimization is finished.
+   * @output if the the optimization is finished
+   */
   bool finished = ((dp[0] < dpFinished[0]) && (dp[1] < dpFinished[1]) && (dp[2] < dpFinished[2]));
   return finished;
-}
-
-TwiddleState PIDWithTwiddle::getState() {
-  return optimization_state;
-}
-
-int PIDWithTwiddle::getOptimizationIndex() {
-  return optimization_index;
-}
-
-int PIDWithTwiddle::getRMSECount() {
-  return running_RMSE.GetCount();
-}
-
-double PIDWithTwiddle::getDp(int index) {
-  return dp[index];
-}
-
-double PIDWithTwiddle::getDpFinished(int index) {
-  return dpFinished[index];
 }

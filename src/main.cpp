@@ -3,10 +3,10 @@
 #include <iostream>
 #include <string>
 #include "json.hpp"
+
 #include "PID.h"
 #include "PIDWithTwiddle.h"
-
-#include "RunningRMSE.h"
+#include "RunningData.h"
 
 // for convenience
 using nlohmann::json;
@@ -40,77 +40,150 @@ int main(int argc, char *argv[]) {
   PID velocity_pid;
 
   bool timeToOptimize = true;
+  RunningData rmse(10);
 
-// 40
-// ,Kp,0.16957,Ki,9.33996e-07,Kd,1.32288
-// ,dp0,0.00117269,dp1,9.55522e-09,dp2,0.0143328
-// ,dpFinished0,0.0015,dpFinished1,1e-08,dpFinished2,0.015
+  // Some Tuned Parameters
+  // Different PC may have different parameters.
 
-// 45
-// ,Kp,0.182299,Ki,7.39706e-07,Kd,1.36296
-// ,dp0,0.00131243,dp1,8.83529e-09,dp2,0.00930794
-// ,dpFinished0,0.0016957,dpFinished1,9.33996e-09,dpFinished2,0.0132288
+  // Speed 30
+  // Kp 0.389131
+  // Ki 0.0000000121714
+  // Kd 2.60246
 
-// 50
-// ,Kp,0.169904,Ki,7.39706e-07,Kd,1.36296
-// ,dp0,0.000333975,dp1,1.45688e-09,dp2,0.00268441
-// ,dpFinished0,0.00033914,dpFinished1,1.47941e-09,dpFinished2,0.00272592
+  // Speed 40
+  // Kp 0.16957
+  // Ki 9.33996e-07
+  // Kd 1.32288
 
-// 60
-// ,Kp,0.0778486,Ki,7.64535e-07,Kd,1.29949
-// ,dp0,0.000121371,dp1,1.37163e-09,dp2,0.00120026
-// ,dpFinished0,0.00016,dpFinished1,1.47941e-09,dpFinished2,0.0026
+  // Kp,0.130391,Ki,9.8713e-09,Kd,1.30835,err,0.650601
+  // Speed 50
+  // Kp 0.130391
+  // Ki 0.0000000098713
+  // Kd 1.30835
 
+  // Speed 60
+  // Kp 0.0778486
+  // Ki 7.64535e-07
+  // Kd 1.29949
 
-  // double steer_Kp = 0.3;
-  // double steer_Ki = 0.0000001;
-  // double steer_Kd = 0.2;
-  // double target_speed = 10;
-  // double steer_Kp = 0.25;
-  // double steer_Ki = 0.0000001;
-  // double steer_Kd = 1.0;
-  // double target_speed = 20;
-  // double steer_Kp = 0.2;
-  // double steer_Ki = 0.0000001;
-  // double steer_Kd = 1.2;
-  // double target_speed = 30;
-  // double steer_Kp = 0.2;
-  // double steer_Ki = 0.0000001;
-  // double steer_Kd = 1.2;
-  // double target_speed = 40;
-  // double steer_Kp = 0.15;
-  // double steer_Ki = 0.0000001;
-  // double steer_Kd = 1.2;
-  // double target_speed = 50;
+  // Speed 70
+  // Kp 
+  // Ki 
+  // Kd 
 
-  double steer_Kp_high_speed = 0.08;
-  double steer_Ki_high_speed = 0.0000001;
-  double steer_Kd_high_speed = 0.2;
-  double target_high_speed = 70;
+  // Speed 80
+  // Kp None
+  // Ki None
+  // Kd None
 
-  double steer_Kp_low_speed = 0.15;
-  double steer_Ki_low_speed = 0.00001;
-  double steer_Kd_low_speed = 1.8;
+  // Speed 90
+  // Kp None
+  // Ki None
+  // Kd None
+
+  // Speed 100
+  // Kp None
+  // Ki None
+  // Kd None
+
+  bool tuning = false;
+  bool dual_speed = true;
+
+  double steer_Kp_high_speed = 0.0841968;
+  double steer_Ki_high_speed = 0.0000000079;
+  double steer_Kd_high_speed = 1.2;
+  double target_high_speed = 65;
+
+  double steer_Kp_low_speed = 0.389131;
+  double steer_Ki_low_speed = 0.0000000121714;
+  double steer_Kd_low_speed = 2.60246;
   double target_low_speed = 30;
 
-  RunningRMSE rmse(10);
-  if (argc >= 4) {
-    steer_Kp_high_speed = atof(argv[1]);
-    steer_Ki_high_speed = atof(argv[2]);
-    steer_Kd_high_speed = atof(argv[3]);
+  double steer_KpD = steer_Kp_high_speed / 10;
+  double steer_KiD = steer_Ki_high_speed / 10;
+  double steer_KdD = steer_Kd_high_speed / 10;
+
+  // Handle argument
+  if (argc > 1) {
+    if (0 == strncmp(argv[1], "tune", 4)) {
+      tuning = true;
+      dual_speed = false;
+      if (argc > 5) {
+        target_high_speed = atof(argv[2]);
+        steer_Kp_high_speed = atof(argv[3]);
+        steer_Ki_high_speed = atof(argv[4]);
+        steer_Kd_high_speed = atof(argv[5]);
+      }
+      if (argc > 8) {
+        steer_KpD = atof(argv[6]);
+        steer_KiD = atof(argv[7]);
+        steer_KdD = atof(argv[8]);
+      } else {
+        steer_KpD = steer_Kp_high_speed / 10;
+        steer_KiD = steer_Ki_high_speed / 10;
+        steer_KdD = steer_Kd_high_speed / 10;
+      }
+    } else if (0 == strncmp(argv[1], "run", 3)) {
+      tuning = false;
+      dual_speed = true;
+      if (argc > 5) {
+        target_high_speed = atof(argv[2]);
+        steer_Kp_high_speed = atof(argv[3]);
+        steer_Ki_high_speed = atof(argv[4]);
+        steer_Kd_high_speed = atof(argv[5]);
+      }
+      if (argc > 9) {
+        target_low_speed = atof(argv[6]);
+        steer_Kp_low_speed = atof(argv[7]);
+        steer_Ki_low_speed = atof(argv[8]);
+        steer_Kd_low_speed = atof(argv[9]);
+      } else {
+        dual_speed = false;
+      }
+    }
   }
-  if (argc >= 5) {
-    target_high_speed = atof(argv[4]);
+
+  // Print the running parameters
+  if (tuning) {
+    std::cout << "Mode:Tuning using Twddle" << std::endl;
+    std::cout << "Speed: " << target_high_speed << std::endl;
+    std::cout << "Kp: " << steer_Kp_high_speed << std::endl;
+    std::cout << "Ki: " << steer_Ki_high_speed << std::endl;
+    std::cout << "Kd: " << steer_Kd_high_speed << std::endl;
+    std::cout << "Kp Initial Step: " << steer_KpD << std::endl;
+    std::cout << "Ki Initial Step: " << steer_KiD << std::endl;
+    std::cout << "Kd Initial Step: " << steer_KdD << std::endl;
+  } else {
+    if (dual_speed) {
+      std::cout << "Mode:Running with 2 speeds" << std::endl;
+      std::cout << "High Speed: " << target_high_speed << std::endl;
+      std::cout << "High Speed Kp: " << steer_Kp_high_speed << std::endl;
+      std::cout << "High Speed Ki: " << steer_Ki_high_speed << std::endl;
+      std::cout << "High Speed Kd: " << steer_Kd_high_speed << std::endl;
+      std::cout << "Low Speed: " << target_low_speed << std::endl;
+      std::cout << "Low Speed Kp: " << steer_Kp_low_speed << std::endl;
+      std::cout << "Low Speed Ki: " << steer_Ki_low_speed << std::endl;
+      std::cout << "Low Speed Kd: " << steer_Kd_low_speed << std::endl;
+    } else {
+      std::cout << "Mode:Running" << std::endl;
+      std::cout << "Speed: " << target_high_speed << std::endl;
+      std::cout << "Kp: " << steer_Kp_high_speed << std::endl;
+      std::cout << "Ki: " << steer_Ki_high_speed << std::endl;
+      std::cout << "Kd: " << steer_Kd_high_speed << std::endl;
+    }
+
   }
   /**
    * Initialize the pid variable.
    */
-  // double Kp_, double Ki_, double Kd_
   steer_pid.Init(steer_Kp_high_speed, steer_Ki_high_speed, steer_Kd_high_speed);
   velocity_pid.Init(0.3, 0.00001, 0.4);
+  int frame = 0;
 
-  h.onMessage([&steer_Kp_high_speed, &steer_Ki_high_speed, &steer_Kd_high_speed, &target_high_speed,
-               &steer_Kp_low_speed, &steer_Ki_low_speed, &steer_Kd_low_speed, &target_low_speed,
+  h.onMessage([&frame, &tuning, &dual_speed,
+               &target_high_speed, &steer_Kp_high_speed, &steer_Ki_high_speed, &steer_Kd_high_speed, 
+               &target_low_speed, &steer_Kp_low_speed, &steer_Ki_low_speed, &steer_Kd_low_speed,
+               &steer_KpD, &steer_KiD, &steer_KdD,
                &rmse, &timeToOptimize, &steer_pid, &velocity_pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -131,21 +204,23 @@ int main(int argc, char *argv[]) {
           double angle = std::stod(j[1]["steering_angle"].get<string>());
           double steer_value = 0;
           double throttle = 0;
-          /**
-           * TODO: Calculate steering value here, remember the steering value is
-           *   [-1, 1].
-           */
+          
+          // Calculating Steering Angle using PID
           double target_speed = target_high_speed;
-          if (rmse.getRMSE() > 0.8) {
-            steer_pid.Init(steer_Kp_low_speed, steer_Ki_low_speed, steer_Kd_low_speed);
-            target_speed = target_low_speed;
-          } else {
-            steer_pid.Init(steer_Kp_high_speed, steer_Ki_high_speed, steer_Kd_high_speed);
-            target_speed = target_high_speed;
+          // Handle 2 Speed Mode
+          if (dual_speed) {
+            if (rmse.getRMS() > 0.8) {
+              steer_pid.Init(steer_Kp_low_speed, steer_Ki_low_speed, steer_Kd_low_speed);
+              target_speed = target_low_speed;
+            } else {
+              steer_pid.Init(steer_Kp_high_speed, steer_Ki_high_speed, steer_Kd_high_speed);
+              target_speed = target_high_speed;
+            }
           }
-          rmse.AddError(cte);
-          if (timeToOptimize && steer_pid.IsOptimizationFinished() && speed > target_high_speed * 0.9 && false) {
-            steer_pid.startOptimization(1000, 0.1, {steer_Kp_high_speed / 50.0, steer_Ki_high_speed / 50.0, steer_Kd_high_speed / 50.0});
+          rmse.Add(cte);
+          // Handle Auto Tuning Mode using Twiddle
+          if (timeToOptimize && steer_pid.IsOptimizationFinished() && frame > (30 / target_speed * 1600) && tuning) {
+            steer_pid.startOptimization((30 / target_speed * 1600) * 2, 0.1, {steer_KpD, steer_KiD, steer_KdD});
             timeToOptimize = false;
           }
           steer_pid.UpdateError(cte);
@@ -156,7 +231,9 @@ int main(int argc, char *argv[]) {
           if (steer_value > 1) {
             steer_value = 1;
           }
+          frame++;
 
+          // Calculating Throttle using PID
           velocity_pid.UpdateError(speed - target_speed);
           throttle = -velocity_pid.TotalError();
           if (throttle < -1) {
@@ -166,35 +243,18 @@ int main(int argc, char *argv[]) {
             throttle = 1;
           }
 
-          std::cout << "rmse," << rmse.getRMSE();
-          std::cout << "cte," << cte;
-          std::cout << ",steer_value," << steer_value;
-          std::cout << ",angle," << angle;
-          std::cout << ",speed," << speed;
-          std::cout << ",target_speed," << target_high_speed;
-          std::cout << ",throttle," << throttle;
-          std::cout << std::endl;
-          std::cout << ",Kp," << steer_pid.get_Kp();
-          std::cout << ",Ki," << steer_pid.get_Ki();
-          std::cout << ",Kd," << steer_pid.get_Kd();
-          std::cout << std::endl;
-          std::cout << ",dp0," << steer_pid.getDp(0);
-          std::cout << ",dp1," << steer_pid.getDp(1);
-          std::cout << ",dp2," << steer_pid.getDp(2);
-          std::cout << std::endl;
-          std::cout << ",dpFinished0," << steer_pid.getDpFinished(0);
-          std::cout << ",dpFinished1," << steer_pid.getDpFinished(1);
-          std::cout << ",dpFinished2," << steer_pid.getDpFinished(2);
-          std::cout << std::endl;
-          std::cout << ",getOptimizationIndex," << steer_pid.getOptimizationIndex();
-          std::cout << ",getState," << (int)steer_pid.getState();
-          std::cout << ",getRMSECount," << steer_pid.getRMSECount();
-          std::cout << ",TwiddleFinished," << (steer_pid.IsOptimizationFinished() ? "Yes" : "No");
-          std::cout << ",timeToOptimize," << (timeToOptimize ? "Yes" : "No");
-          std::cout << std::endl;
-
-
-          //std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+          // Print Information
+          if (!tuning) {
+            std::cout << "Frame," << frame;
+            std::cout << ",Current Car Steering Angle," << angle;
+            std::cout << ",Current Car Speed," << speed;
+            std::cout << ",Current Cross Track Error," << cte;
+            std::cout << ",Root Mean Square Error," << rmse.getRMS();
+            std::cout << ",Computed Steer Value," << steer_value;
+            std::cout << ",Target Speed," << target_speed;
+            std::cout << ",Throttle," << throttle;
+            std::cout << std::endl;
+          }
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;

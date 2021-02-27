@@ -5,6 +5,9 @@
  */
 
 PID::PID() {
+  /**
+   * Constructor
+   */
   p_error = 0;
   i_error = 0;
   d_error = 0;
@@ -13,7 +16,11 @@ PID::PID() {
   Kd = 0;
 }
 
-PID::~PID() {}
+PID::~PID() {
+  /**
+   * Destructor.
+   */
+}
 
 void PID::Init(double Kp_, double Ki_, double Kd_) {
   /**
@@ -37,15 +44,27 @@ double PID::TotalError() {
   /**
    * Calculate and return the total error
    */
-  return Kp * p_error + Ki * i_error + Kd * d_error;  // TODO: Add your total error calc here!
+  return Kp * p_error + Ki * i_error + Kd * d_error;
 }
 
 double PID::get_Kp() {
+  /**
+   * Get the Kp.
+   * @output Kp
+   */
   return Kp;
 }
 double PID::get_Ki() {
+  /**
+   * Get the Ki.
+   * @output Ki
+   */
   return Ki;
 }
 double PID::get_Kd() {
+  /**
+   * Get the Kd.
+   * @output Kd
+   */
   return Kd;
 }
