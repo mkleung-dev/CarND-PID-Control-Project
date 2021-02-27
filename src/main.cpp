@@ -42,61 +42,56 @@ int main(int argc, char *argv[]) {
   bool timeToOptimize = true;
   RunningData rmse(10);
 
-  // Some Tuned Parameters
+  // Some Tuned Parameters in my local machine
   // Different PC may have different parameters.
 
+  // Kp,0.350218,Ki,1.33885e-08,Kd,2.60246,error,0.165982
   // Speed 30
-  // Kp 0.389131
-  // Ki 0.0000000121714
+  // Kp 0.350218
+  // Ki 0.0000000133885
   // Kd 2.60246
 
+  // Kp,0.29,Ki,1e-08,Kd,2.7,error,0.284529
   // Speed 40
-  // Kp 0.16957
-  // Ki 9.33996e-07
-  // Kd 1.32288
+  // Kp 0.29
+  // Ki 0.00000001
+  // Kd 2.7
 
-  // Kp,0.130391,Ki,9.8713e-09,Kd,1.30835,err,0.650601
+  // Kp,0.143,Ki,1e-08,Kd,1.31,error,0.584251
   // Speed 50
-  // Kp 0.130391
-  // Ki 0.0000000098713
-  // Kd 1.30835
+  // Kp 0.143
+  // Ki 0.00000001
+  // Kd 1.31
 
+  // Kp,0.0968,Ki,9e-09,Kd,1.17,error,1.18626
   // Speed 60
-  // Kp 0.0778486
-  // Ki 7.64535e-07
-  // Kd 1.29949
-
-  // Speed 70
-  // Kp 
-  // Ki 
-  // Kd 
-
-  // Speed 80
-  // Kp None
-  // Ki None
-  // Kd None
-
-  // Speed 90
-  // Kp None
-  // Ki None
-  // Kd None
-
-  // Speed 100
-  // Kp None
-  // Ki None
-  // Kd None
+  // Kp 0.0968
+  // Ki 0.000000009
+  // Kd 1.17
 
   bool tuning = false;
   bool dual_speed = true;
 
-  double steer_Kp_high_speed = 0.0841968;
-  double steer_Ki_high_speed = 0.0000000079;
-  double steer_Kd_high_speed = 1.2;
-  double target_high_speed = 65;
+  // Parameter for local machine
+  // double steer_Kp_high_speed = 0.07;
+  // double steer_Ki_high_speed = 0.000000009;
+  // double steer_Kd_high_speed = 1.2;
+  // double target_high_speed = 70;
 
-  double steer_Kp_low_speed = 0.389131;
-  double steer_Ki_low_speed = 0.0000000121714;
-  double steer_Kd_low_speed = 2.60246;
+  // double steer_Kp_low_speed = 0.143;
+  // double steer_Ki_low_speed = 0.00000001;
+  // double steer_Kd_low_speed = 1.31;
+  // double target_low_speed = 50;
+
+  // Parameter for CarND Workspace at Udacity
+  double steer_Kp_high_speed = 0.1;
+  double steer_Ki_high_speed = 0.00000001;
+  double steer_Kd_high_speed = 1;
+  double target_high_speed = 60;
+
+  double steer_Kp_low_speed = 0.2;
+  double steer_Ki_low_speed = 0.00000001;
+  double steer_Kd_low_speed = 2;
   double target_low_speed = 30;
 
   double steer_KpD = steer_Kp_high_speed / 10;
