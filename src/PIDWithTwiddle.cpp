@@ -74,7 +74,7 @@ void PIDWithTwiddle::UpdateError(double cte) {
         std::cout << "Kp," << get_Kp();
         std::cout << ",Ki," << get_Ki();
         std::cout << ",Kd," << get_Kd();
-        std::cout << ",err," << err;
+        std::cout << ",error," << err;
         std::cout << ",min_error," << min_error;
         std::cout << std::endl;
 
@@ -110,7 +110,7 @@ void PIDWithTwiddle::UpdateError(double cte) {
         std::cout << "Kp," << get_Kp();
         std::cout << ",Ki," << get_Ki();
         std::cout << ",Kd," << get_Kd();
-        std::cout << ",err," << err;
+        std::cout << ",error," << err;
         std::cout << ",min_error," << min_error;
         std::cout << std::endl;
 
