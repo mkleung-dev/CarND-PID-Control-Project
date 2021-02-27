@@ -1,7 +1,35 @@
 # CarND-Controls-PID
 Self-Driving Car Engineer Nanodegree Program
 
+[//]: # (Image References)
+
+[PID]: ./image/PID.png "PID"
+[Twiddle]: ./image/Twiddle.png "Twiddle"
+[Kp]: ./image/Kp.png "Kp"
+[Ki]: ./image/Ki.png "Ki"
+[Kd]: ./image/Kd.png "Kd"
+   
+### Simulator.
+The Term2 Simulator which contains the Path Planning Project can be downloaded from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases).  
+
+To run the simulator on Mac/Linux, first make the binary file executable with the following command:
+```shell
+sudo chmod u+x {simulator_file_name}
+```
+
+### Goals
+In this project, the goal is to implement a PID controller in C++ to maneuver the vehicle around the track.
+
 ---
+
+## File Description
+
+|Files|Description|
+|:----|:----------|
+|`src/main.cpp`|1. Communicates with the Term 2 Simulator receiving data measurements. <br /> 2. Call functions to update the steering angle and throttle.|
+|`src/PID.h` <br /> `src/PID.cpp`|Class for PID controller.|
+|`src/PIDWithTwiddle.h` <br /> `src/PIDWithTwiddle.cpp`|Class for PID controller with auto tuning using Twiddle algorithm.|
+|`src/RunningData.h` <br /> `src/RunningData.cpp`|Class to compute running statistics.|
 
 ## Dependencies
 
@@ -26,8 +54,6 @@ Self-Driving Car Engineer Nanodegree Program
     Some function signatures have changed in v0.14.x. See [this PR](https://github.com/udacity/CarND-MPC-Project/pull/3) for more details.
 * Simulator. You can download these from the [project intro page](https://github.com/udacity/self-driving-car-sim/releases) in the classroom.
 
-Fellow students have put together a guide to Windows set-up for the project [here](https://s3-us-west-1.amazonaws.com/udacity-selfdrivingcar/files/Kidnapped_Vehicle_Windows_Setup.pdf) if the environment you have set up for the Sensor Fusion projects does not work for this project. There's also an experimental patch for windows in this [PR](https://github.com/udacity/CarND-PID-Control-Project/pull/3).
-
 ## Basic Build Instructions
 
 1. Clone this repo.
@@ -35,64 +61,159 @@ Fellow students have put together a guide to Windows set-up for the project [her
 3. Compile: `cmake .. && make`
 4. Run it: `./pid`. 
 
-Tips for setting up your environment can be found [here](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/f758c44c-5e40-4e01-93b5-1a82aa4e044f/concepts/23d376c7-0195-4276-bdf0-e02f1f3c665d)
+## Basic Run Instructions
 
-## Editor Settings
+|Command|Description|
+|:------|:----------|
+|`./pid`|Running with PID parameters suitable for Udacity's workspace.|
+|`./pid run speed Kp Ki Kd`|Running with specified parameters (Car speed, PID Kp, PID Ki, PID Kd)|
+|`./pid run high_speed high_speed_Kp high_speed_Ki high_speed_Kd low_speed low_speed_Kp low_speed_Ki low_speed_Kd`|Running using two speed mode with specified parameters. When the running root mean square of cross is smaller than 0.8, it runs with high speed with parameters (high_speed high_speed_Kp high_speed_Ki high_speed_Kd). Otherwise, it runs with low speed with parameters (low_speed low_speed_Kp low_speed_Ki low_speed_Kd) |
+|`./pid tune speed initial_Kp initial_Ki initial_Kd [initial_Kp_step initial_Ki_step initial_Kd_step]`|Tuning PID with specified parameters (Car speed, Initial PID Kp, Initial PID Ki, Initial PID Kd, Initial PID Kp Step, Initial PID Ki, Initial PID Kd). if initial_Kp_step initial_Ki_step initial_Kd_step are not provided, they are set to initial_Kp/10 initial_Ki/10 initial_Kd/10.|
 
-We've purposefully kept editor configuration files out of this repo in order to
-keep it as simple and environment agnostic as possible. However, we recommend
-using the following settings:
+---
+## Data provided from the Simulator to the C++ Program
 
-* indent using spaces
-* set tab width to 2 spaces (keeps the matrices in source code aligned)
+### Current car status
 
-## Code Style
+["cte"] The current cross track error.
 
-Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
+["speed"] The current velocity of the car.
 
-## Project Instructions and Rubric
+["steering_angle"] The current steering angle of the car.
 
-Note: regardless of the changes you make, your project must be buildable using
-cmake and make!
+## Data provided from the C++ program to the Simulator
 
-More information is only accessible by people who are already enrolled in Term 2
-of CarND. If you are enrolled, see [the project page](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/f1820894-8322-4bb3-81aa-b26b3c6dcbaf/lessons/e8235395-22dd-4b87-88e0-d108c5e5bbf4/concepts/6a4d8d42-6a04-4aa6-b284-1697c0fd6562)
-for instructions and the project rubric.
+### Car's control
 
-## Hints!
+["steering_angle"] The steering angle of the car. It is ranged from -1 to 1.
 
-* You don't have to follow this directory structure, but if you do, your work
-  will span all of the .cpp files here. Keep an eye out for TODOs.
+["throttle"] The throttle of the car. It is ranged from -1 to 1.
 
-## Call for IDE Profiles Pull Requests
+---
 
-Help your fellow students!
+## Implementation and Reflection
 
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to we ensure
-that students don't feel pressured to use one IDE or another.
+The implemenation and reflection are described in the followings.
 
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
+### PID Controller
 
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
+It is implemented as `class PID` in `PID.h` and `PID.cpp`.
 
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
+![PID]
 
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
+PID controllers are used to compute the throttle value and the steering angle.
 
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
+### Paramters in PID
 
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
+|Parameters|Description|
+|:--------:|:-----|
+|P|Proportional to the current error.|
+|Kp|Weight of P applied to final control.|
+|I|Integrals of all the errors over time.|
+|Ki|Weight of I applied to final control.|
+|D|Rate of the change of the error. |
+|Kd|Weight of Kd applied to final control.|
 
+### Tuning steering angle in PID
+
+#### Kp
+
+When Kp increase, the steering angle would response larger.
+The car would come to track center faster.
+However, the car would easily over-shoot and also lead to oscillation.
+Oscillation amplitude increases with the Kp.
+
+Kp cannot be large when the car velocity is too high.
+High Kp makes car oscillate even at straight line.
+Setting Kd also cannot help much.
+The car would get out of the track easily.
+At the same time, Low Kp cannot help the car turn in time at sharp turn.
+It is difficult to hanle in hight velocity.
+
+![Kp]
+
+#### Ki
+
+Ki is not important in controlling the steering angle.
+Even if it is zero, the car can move steadily on the road.
+However, it is discovered that the average error would have little biased.
+Setting Ki a quite small value can avoid the system biase in long term.
+Setting Ki too big would also lead to oscillation easily.
+
+![Ki]
+
+#### Kd
+
+Kd can acts as a damping parameter.
+The oscillation amplitude and duration can decrease with Kd.
+However, it cannot make the oscillation disappear completely. 
+
+![Kd]
+
+#### Manual Tuning
+
+1. Start with 10 MPH.
+2. Increase Kp until the car can respond to the off cetner.
+3. Increase Kd until the oscillation is minimized.
+4. Repeat Step 2 and Step 3 until the car can run steady on the track.
+5. Add a little Ki which does not affect the current performance.
+6. Increase the velocity and repeat Step 2 to Step 5.
+
+It is difficult to tune when the car velocity is over 60 MPH.
+
+### Optimization of Parameters in PID using Twiddle algorithm
+
+It is implemented as `class PIDWithTwiddle` in `PIDWithTwiddle.h` and `PIDWithTwiddle.cpp`. It is implemented using finiste state machine. The pseudocode is described in the following figure.
+
+![Twiddle]
+
+
+### Parameters in my local machine
+
+Try to optimize Kp, Ki, Kd using Twiddle algorithm under different velocities.
+Get the root mean square for 2 laps each time and update the parameters.
+
+|Velocity[MPH]|Kp      |Ki             |Kd     |RMS Error|
+|:-----------:|:------:|:-------------:|:-----:|:-------:|
+|30           |0.350218|0.0000000121714|2.60246|0.165982 |
+|40           |0.29    |0.00000001     |2.7    |0.284529 |
+|50           |0.143   |0.00000001     |1.31   |0.584251 |
+|60           |0.08712 |0.0000000081   |1.17   |1.18434  |
+
+It is difficult to auto tune the parameters over 50 MPH as the car may get out of the track when trying different parameters.
+
+The driving performance (in terms of osciallation and maximum cross track error) may not be very good at some turns while the overall performance is quite good.
+
+### 2 Speed mode
+
+It is implemented in `main.cpp` line 212 - 220.
+
+When the root mean square of the error in the most 10 frames is smaller than or equal to 0.8,
+it run with higher speed with a PID controller.
+When the root mean square of the error in the most 10 frames is larger than 0.8,
+it run with lower speed with another PID controller.
+
+Mostly likely, the low speed mode would be effective when the car is turning.
+The high speed mode would be effective when the car moving at straight line.
+Therefore, the Kp would be smaller in high speed mode.
+It does not need to handle in most turns.
+
+Run the 2 speed mode using the following parameters in my local machine.
+
+|Mode         |Velocity[MPH]|Kp      |Ki         |Kd  |
+|:-----------:|:-----------:|:------:|:---------:|:--:|
+|Low Velocity |50           |0.143   |0.000000009|1.31|
+|High Velocity|70           |0.07    |0.00000001 |1.2 |
+
+### Parameters in the Udacity workspace
+
+The parameters optimized in my local machine cannot be used to Udacity workspace.
+Complete tuning using Twiddle in the Udacity workspace is impossible as it takes too much time.
+Fine tune the parameters according to the parameters in local machine and the manual tuning method mentioned.
+
+Run the 2 speed mode using the following parameters.
+
+|Mode         |Velocity[MPH]|Kp      |Ki        |Kd |
+|:-----------:|:-----------:|:------:|:--------:|:-:|
+|Low Velocity |30           |0.2     |0.00000001|2  |
+|High Velocity|60           |0.1     |0.00000001|1  |
